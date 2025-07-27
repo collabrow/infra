@@ -1,0 +1,44 @@
+{
+  "name": "postgres-cdk-app",
+  "version": "1.0.0",
+  "description": "AWS CDK app for deploying PostgreSQL on RDS",
+  "bin": {
+    "postgres-cdk-app": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "deploy": "cdk deploy",
+    "deploy:dev": "cdk deploy PostgresStack-dev --context environment=dev",
+    "deploy:staging": "cdk deploy PostgresStack-staging --context environment=staging",
+    "deploy:production": "cdk deploy PostgresStack-production --context environment=production",
+    "diff": "cdk diff",
+    "diff:dev": "cdk diff PostgresStack-dev --context environment=dev",
+    "diff:staging": "cdk diff PostgresStack-staging --context environment=staging",
+    "diff:production": "cdk diff PostgresStack-production --context environment=production",
+    "synth": "cdk synth",
+    "synth:dev": "cdk synth PostgresStack-dev --context environment=dev",
+    "synth:staging": "cdk synth PostgresStack-staging --context environment=staging",
+    "synth:production": "cdk synth PostgresStack-production --context environment=production",
+    "destroy": "cdk destroy",
+    "destroy:dev": "cdk destroy PostgresStack-dev --context environment=dev",
+    "destroy:staging": "cdk destroy PostgresStack-staging --context environment=staging",
+    "destroy:production": "cdk destroy PostgresStack-production --context environment=production"
+  },
+  "packageManager": "pnpm@8.0.0",
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/node": "20.6.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "aws-cdk": "2.100.0",
+    "ts-node": "^10.9.1",
+    "typescript": "~5.2.2"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.100.0",
+    "constructs": "^10.0.0"
+  }
+}

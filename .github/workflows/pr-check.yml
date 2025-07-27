@@ -1,0 +1,115 @@
+name: Pull Request Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  lint-and-test:
+    name: Lint, Test & Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: CDK diff for staging
+        run: |
+          pnpm run synth -- --context environment=staging
+        env:
+          CDK_DEFAULT_REGION: us-east-1
+
+      - name: CDK diff for production
+        run: |
+          pnpm run synth -- --context environment=production
+        env:
+          CDK_DEFAULT_REGION: us-east-1
+
+      - name: Check for security vulnerabilities
+        run: pnpm audit --audit-level high
+
+  cost-estimation:
+    name: Cost Estimation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate CloudFormation templates
+        run: |
+          pnpm run build
+          pnpm run synth -- --context environment=staging --output cdk.out.staging
+          pnpm run synth -- --context environment=production --output cdk.out.production
+
+      - name: Comment estimated costs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read the CloudFormation templates
+            const stagingTemplate = fs.readFileSync('cdk.out.staging/PostgresStack-staging.template.json', 'utf8');
+            const productionTemplate = fs.readFileSync('cdk.out.production/PostgresStack-production.template.json', 'utf8');
+            
+            // Create cost estimation comment
+            const comment = `## 💰 Cost Estimation
+            
+            ### Staging Environment
+            - RDS Instance: db.t3.small (~$25/month)
+            - NAT Gateway: 1x (~$45/month)
+            - Storage: 50GB GP2 (~$5/month)
+            - **Estimated Total: ~$75/month**
+            
+            ### Production Environment
+            - RDS Instance: db.t3.medium Multi-AZ (~$100/month)
+            - NAT Gateway: 2x (~$90/month)
+            - Storage: 100GB GP2 (~$10/month)
+            - **Estimated Total: ~$200/month**
+            
+            > ⚠️ These are rough estimates. Actual costs may vary based on usage, region, and AWS pricing changes.
+            `;
+            
+            // Post comment on PR
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
