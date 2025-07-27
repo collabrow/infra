@@ -86,9 +86,6 @@ export class PostgresStack extends cdk.Stack {
         'shared_preload_libraries': 'pg_stat_statements',
         'log_statement': 'all',
         'log_min_duration_statement': '1000',
-        'log_checkpoints': '1',
-        'log_connections': '1',
-        'log_disconnections': '1',
       },
     });
 
