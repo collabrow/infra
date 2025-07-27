@@ -80,9 +80,9 @@ export class PostgresStack extends cdk.Stack {
     // Create parameter group for PostgreSQL
     const parameterGroup = new rds.ParameterGroup(this, 'PostgresParameterGroup', {
       engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_15_4,
+        version: rds.PostgresEngineVersion.VER_17_5,
       }),
-      description: 'Parameter group for PostgreSQL 15.4',
+      description: 'Parameter group for PostgreSQL 17.5',
       parameters: {
         'shared_preload_libraries': 'pg_stat_statements',
         'log_statement': 'all',
@@ -103,7 +103,7 @@ export class PostgresStack extends cdk.Stack {
 
     const dbInstance = new rds.DatabaseInstance(this, 'PostgresInstance', {
       engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_15_4,
+        version: rds.PostgresEngineVersion.VER_17_5,
       }),
       instanceType: instanceTypeMap[props.config.instanceType] || instanceTypeMap['db.t3.micro'],
       vpc,
