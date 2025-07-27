@@ -125,6 +125,7 @@ export class PostgresStack extends cdk.Stack {
       autoMinorVersionUpgrade: true,
       allowMajorVersionUpgrade: false,
       deleteAutomatedBackups: !props.config.deletionProtection,
+      instanceIdentifier: `collabrow-${props.environment === 'production' ? 'prod' : props.environment}`,
     });
 
     // Create bastion host for database access (optional)
