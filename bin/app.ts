@@ -11,25 +11,22 @@ const environment = app.node.tryGetContext('environment') || 'dev';
 // Environment-specific configurations
 const envConfig = {
   dev: {
-    instanceType: 'db.t3.micro',
-    multiAz: false,
+    minCapacity: 0.5,
+    maxCapacity: 2,
     deletionProtection: false,
     backupRetention: 7,
-    allocatedStorage: 20,
   },
   staging: {
-    instanceType: 'db.t3.small',
-    multiAz: false,
+    minCapacity: 0.5,
+    maxCapacity: 4,
     deletionProtection: false,
     backupRetention: 14,
-    allocatedStorage: 50,
   },
   production: {
-    instanceType: 'db.t3.medium',
-    multiAz: true,
+    minCapacity: 1,
+    maxCapacity: 16,
     deletionProtection: true,
     backupRetention: 30,
-    allocatedStorage: 100,
   },
 };
 
@@ -41,5 +38,5 @@ new PostgresStack(app, `PostgresStack-${environment}`, {
   },
   environment,
   config: envConfig[environment as keyof typeof envConfig] || envConfig.dev,
-  description: `PostgreSQL RDS instance for ${environment} environment with VPC and security groups`
+  description: `Aurora PostgreSQL Serverless v2 cluster for ${environment} environment with I/O-Optimized storage`
 });

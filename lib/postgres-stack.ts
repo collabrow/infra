@@ -7,11 +7,10 @@ import { Construct } from 'constructs';
 interface PostgresStackProps extends cdk.StackProps {
   environment: string;
   config: {
-    instanceType: string;
-    multiAz: boolean;
+    minCapacity: number;
+    maxCapacity: number;
     deletionProtection: boolean;
     backupRetention: number;
-    allocatedStorage: number;
   };
 }
 
@@ -19,7 +18,7 @@ export class PostgresStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: PostgresStackProps) {
     super(scope, id, props);
 
-    // Create VPC for the RDS instance
+    // Create VPC for the Aurora cluster
     const vpc = new ec2.Vpc(this, 'PostgresVPC', {
       maxAzs: 2, // Use 2 availability zones for high availability
       natGateways: props.environment === 'production' ? 2 : 1, // Cost optimization for non-prod
@@ -42,10 +41,10 @@ export class PostgresStack extends cdk.Stack {
       ],
     });
 
-    // Create security group for RDS
+    // Create security group for Aurora
     const dbSecurityGroup = new ec2.SecurityGroup(this, 'PostgresSecurityGroup', {
       vpc,
-      description: 'Security group for PostgreSQL RDS instance',
+      description: 'Security group for Aurora PostgreSQL cluster',
       allowAllOutbound: false,
     });
 
@@ -59,7 +58,7 @@ export class PostgresStack extends cdk.Stack {
     // Create DB subnet group
     const dbSubnetGroup = new rds.SubnetGroup(this, 'PostgresSubnetGroup', {
       vpc,
-      description: 'Subnet group for PostgreSQL RDS instance',
+      description: 'Subnet group for Aurora PostgreSQL cluster',
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
       },
@@ -77,12 +76,12 @@ export class PostgresStack extends cdk.Stack {
       },
     });
 
-    // Create parameter group for PostgreSQL
-    const parameterGroup = new rds.ParameterGroup(this, 'PostgresParameterGroup', {
-      engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_17_5,
+    // Create parameter group for Aurora PostgreSQL
+    const clusterParameterGroup = new rds.ParameterGroup(this, 'PostgresClusterParameterGroup', {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: rds.AuroraPostgresEngineVersion.VER_17_5,
       }),
-      description: 'Parameter group for PostgreSQL 17.5',
+      description: 'Cluster parameter group for Aurora PostgreSQL 17.5',
       parameters: {
         'shared_preload_libraries': 'pg_stat_statements',
         'log_statement': 'all',
@@ -93,39 +92,40 @@ export class PostgresStack extends cdk.Stack {
       },
     });
 
-    // Create RDS PostgreSQL instance
-    const instanceTypeMap: Record<string, ec2.InstanceType> = {
-      'db.t3.micro': ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      'db.t3.small': ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.SMALL),
-      'db.t3.medium': ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-      'db.t3.large': ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.LARGE),
-    };
-
-    const dbInstance = new rds.DatabaseInstance(this, 'PostgresInstance', {
-      engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_17_5,
+    // Create Aurora Serverless v2 PostgreSQL cluster
+    const cluster = new rds.DatabaseCluster(this, 'PostgresCluster', {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: rds.AuroraPostgresEngineVersion.VER_17_5,
       }),
-      instanceType: instanceTypeMap[props.config.instanceType] || instanceTypeMap['db.t3.micro'],
       vpc,
       subnetGroup: dbSubnetGroup,
       securityGroups: [dbSecurityGroup],
       credentials: rds.Credentials.fromSecret(dbSecret),
-      multiAz: props.config.multiAz,
-      allocatedStorage: props.config.allocatedStorage,
-      storageType: rds.StorageType.GP2,
-      storageEncrypted: true,
-      parameterGroup,
-      backupRetention: cdk.Duration.days(props.config.backupRetention),
+      parameterGroup: clusterParameterGroup,
+      backup: {
+        retention: cdk.Duration.days(props.config.backupRetention),
+      },
       deletionProtection: props.config.deletionProtection,
-      databaseName: 'postgres',
+      defaultDatabaseName: 'postgres',
       port: 5432,
       enablePerformanceInsights: true,
       performanceInsightRetention: rds.PerformanceInsightRetention.DEFAULT,
       monitoringInterval: cdk.Duration.seconds(60),
-      autoMinorVersionUpgrade: true,
-      allowMajorVersionUpgrade: false,
-      deleteAutomatedBackups: !props.config.deletionProtection,
-      instanceIdentifier: `collabrow-${props.environment === 'production' ? 'prod' : props.environment}`,
+      storageEncrypted: true,
+      storageType: rds.DBClusterStorageType.AURORA_IOPT1,
+      clusterIdentifier: `collabrow-${props.environment === 'production' ? 'prod' : props.environment}`,
+      serverlessV2MinCapacity: props.config.minCapacity,
+      serverlessV2MaxCapacity: props.config.maxCapacity,
+      writer: rds.ClusterInstance.serverlessV2('writer', {
+        enablePerformanceInsights: true,
+        performanceInsightRetention: rds.PerformanceInsightRetention.DEFAULT,
+      }),
+      readers: props.environment === 'production' ? [
+        rds.ClusterInstance.serverlessV2('reader1', {
+          enablePerformanceInsights: true,
+          performanceInsightRetention: rds.PerformanceInsightRetention.DEFAULT,
+        }),
+      ] : [],
     });
 
     // Create bastion host for database access (optional)
@@ -160,13 +160,18 @@ export class PostgresStack extends cdk.Stack {
 
     // Outputs
     new cdk.CfnOutput(this, 'DatabaseEndpoint', {
-      value: dbInstance.instanceEndpoint.hostname,
-      description: `PostgreSQL database endpoint for ${props.environment}`,
+      value: cluster.clusterEndpoint.hostname,
+      description: `Aurora PostgreSQL cluster endpoint for ${props.environment}`,
     });
 
     new cdk.CfnOutput(this, 'DatabasePort', {
-      value: dbInstance.instanceEndpoint.port.toString(),
-      description: 'PostgreSQL database port',
+      value: cluster.clusterEndpoint.port.toString(),
+      description: 'Aurora PostgreSQL cluster port',
+    });
+
+    new cdk.CfnOutput(this, 'DatabaseReadEndpoint', {
+      value: cluster.clusterReadEndpoint.hostname,
+      description: `Aurora PostgreSQL cluster read endpoint for ${props.environment}`,
     });
 
     new cdk.CfnOutput(this, 'DatabaseSecretArn', {

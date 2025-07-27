@@ -3,14 +3,13 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { PostgresStack } from '../lib/postgres-stack';
 
 const testConfig = {
-  instanceType: 'db.t3.micro',
-  multiAz: false,
+  minCapacity: 0.5,
+  maxCapacity: 2,
   deletionProtection: false,
   backupRetention: 7,
-  allocatedStorage: 20,
 };
 
-test('PostgreSQL Stack creates RDS instance', () => {
+test('PostgreSQL Stack creates Aurora cluster', () => {
   const app = new cdk.App();
   const stack = new PostgresStack(app, 'TestPostgresStack', {
     environment: 'test',
@@ -18,12 +17,11 @@ test('PostgreSQL Stack creates RDS instance', () => {
   });
   const template = Template.fromStack(stack);
 
-  // Test that RDS instance is created
-  template.hasResourceProperties('AWS::RDS::DBInstance', {
-    Engine: 'postgres',
-    DBInstanceClass: 'db.t3.micro',
-    AllocatedStorage: '20',
+  // Test that Aurora cluster is created
+  template.hasResourceProperties('AWS::RDS::DBCluster', {
+    Engine: 'aurora-postgresql',
     StorageEncrypted: true,
+    StorageType: 'aurora-iopt1',
   });
 
   // Test that VPC is created
@@ -34,7 +32,7 @@ test('PostgreSQL Stack creates RDS instance', () => {
 
   // Test that security group is created
   template.hasResourceProperties('AWS::EC2::SecurityGroup', {
-    GroupDescription: 'Security group for PostgreSQL RDS instance',
+    GroupDescription: 'Security group for Aurora PostgreSQL cluster',
   });
 
   // Test that secret is created
@@ -69,11 +67,10 @@ test('PostgreSQL Stack has correct outputs', () => {
 test('Production environment has different configuration', () => {
   const app = new cdk.App();
   const prodConfig = {
-    instanceType: 'db.t3.medium',
-    multiAz: true,
+    minCapacity: 1,
+    maxCapacity: 16,
     deletionProtection: true,
     backupRetention: 30,
-    allocatedStorage: 100,
   };
   
   const stack = new PostgresStack(app, 'TestPostgresStackProd', {
@@ -82,13 +79,15 @@ test('Production environment has different configuration', () => {
   });
   const template = Template.fromStack(stack);
 
-  // Test that RDS instance has production configuration
-  template.hasResourceProperties('AWS::RDS::DBInstance', {
-    Engine: 'postgres',
-    DBInstanceClass: 'db.t3.medium',
-    AllocatedStorage: '100',
-    MultiAZ: true,
+  // Test that Aurora cluster has production configuration
+  template.hasResourceProperties('AWS::RDS::DBCluster', {
+    Engine: 'aurora-postgresql',
     DeletionProtection: true,
     BackupRetentionPeriod: 30,
+    StorageType: 'aurora-iopt1',
+    ServerlessV2ScalingConfiguration: {
+      MinCapacity: 1,
+      MaxCapacity: 16,
+    },
   });
 });
