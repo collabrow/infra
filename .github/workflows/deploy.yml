@@ -96,10 +96,16 @@ jobs:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
 
+      - name: List available stacks
+        run: cdk list --context environment=staging
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
       - name: Deploy to staging
         run: |
           pnpm run build
-          cdk deploy PostgresStack-staging --require-approval never
+          cdk deploy PostgresStack-staging --require-approval never --context environment=staging
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
@@ -144,10 +150,16 @@ jobs:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
 
+      - name: List available stacks
+        run: cdk list --context environment=production
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+
       - name: Deploy to production
         run: |
           pnpm run build
-          cdk deploy PostgresStack-production --require-approval never
+          cdk deploy PostgresStack-production --require-approval never --context environment=production
         env:
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
