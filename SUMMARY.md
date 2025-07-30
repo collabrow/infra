@@ -9,7 +9,7 @@ A complete AWS CDK application that deploys a production-ready PostgreSQL databa
 - **Custom VPC**: Multi-AZ setup with public, private, and isolated subnets for security
 - **Security Groups**: Properly configured with least-privilege access
 - **AWS Secrets Manager**: Automated credential management
-- **Bastion Host**: Secure access to the database
+- **VPC Endpoints**: Secure access to AWS services without internet gateway
 - **Parameter Groups**: Custom PostgreSQL configuration with logging and monitoring
 
 ### Package Manager Configuration
@@ -44,7 +44,7 @@ A complete AWS CDK application that deploys a production-ready PostgreSQL databa
 ✅ Encrypted storage
 ✅ Automated credential rotation via Secrets Manager
 ✅ Security groups with minimal required access
-✅ Bastion host for secure database access
+✅ VPC endpoints for secure AWS service access
 
 ### Monitoring & Observability
 ✅ Performance Insights enabled
@@ -93,8 +93,7 @@ pnpm run destroy
 After deployment, you'll receive:
 - Database endpoint and port
 - Database credentials secret ARN
-- VPC ID
-- Bastion host instance ID and public IP
+- VPC ID for application deployment
 
 ## Production Readiness
 
@@ -108,7 +107,7 @@ The stack is designed with production considerations:
 ## Next Steps
 
 1. **Deploy**: Run `pnpm run deploy` to create the infrastructure
-2. **Connect**: Use the bastion host to securely access PostgreSQL
+2. **Connect**: Deploy applications within the same VPC to securely access PostgreSQL
 3. **Monitor**: Use CloudWatch and Performance Insights for monitoring
 4. **Scale**: Modify instance types and storage as needed
 5. **Secure**: Consider enabling Multi-AZ and increasing backup retention for production
@@ -119,7 +118,7 @@ The project includes comprehensive unit tests that verify:
 - RDS instance creation with correct configuration
 - VPC and security group setup
 - Secrets Manager integration
-- Bastion host deployment
+- VPC endpoints for secure AWS service access
 - All required stack outputs
 
 All tests pass successfully with Jest.

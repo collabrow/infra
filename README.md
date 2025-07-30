@@ -31,7 +31,7 @@ pnpm run deploy:production
 - **PostgreSQL RDS**: Environment-specific configurations
 - **Security Groups**: Properly configured for database access
 - **Secrets Manager**: Automated credential management
-- **Bastion Host**: Secure database access
+- **VPC Endpoints**: Secure access to AWS services without internet gateway
 - **Monitoring**: Performance Insights and CloudWatch enabled
 
 ## 🏗️ Environment Configurations
@@ -99,7 +99,7 @@ pnpm run destroy:production  # Destroy production stack
 - Database deployed in isolated subnets (no internet access)
 - Encrypted storage and automated credential rotation
 - Security groups with least-privilege access
-- Bastion host for secure database access
+- VPC endpoints for secure AWS service access without internet gateway
 - Environment-specific IAM roles and policies
 
 ## 📈 Monitoring & Observability
@@ -138,16 +138,16 @@ For detailed setup instructions, see [GitHub Actions Setup Guide](./GITHUB_ACTIO
 
 ## 🔗 Accessing the Database
 
-### Via Bastion Host
-1. Get outputs from stack deployment
-2. SSH to bastion host using EC2 instance connect or Session Manager
-3. Install PostgreSQL client and connect to database
+### Via VPC Resources
+1. Deploy applications or EC2 instances within the same VPC
+2. Access database directly from private/isolated subnets
+3. Use AWS Systems Manager Session Manager for secure administrative access
 
 ### Stack Outputs
 After deployment, you'll receive:
 - Database endpoint and port
 - Database credentials secret ARN
-- VPC ID and bastion host details
+- VPC ID for resource deployment
 - Environment information
 
 ## 🛠️ Development Workflow
@@ -216,43 +216,41 @@ npx cdk deploy --verbose  # Verbose deployment
 
 ### Security Configuration
 - Database deployed in isolated subnets (no internet access)
-- Access only through bastion host or VPC resources
+- Access only through VPC resources (applications, EC2 instances)
 - Credentials stored in AWS Secrets Manager
 - Security groups with minimal required access
+- VPC endpoints for secure AWS service communication
 
 ## Accessing the Database
 
-### Option 1: Using Bastion Host
+### Option 1: From EC2 Instance in VPC
 
-1. Get the bastion host details from stack outputs
-2. SSH into the bastion host:
-   ```bash
-   ssh -i your-key.pem ec2-user@<bastion-public-ip>
-   ```
-
-3. Install PostgreSQL client on bastion:
+1. Deploy an EC2 instance in the same VPC (private or isolated subnet)
+2. Install PostgreSQL client:
    ```bash
    sudo yum update -y
    sudo yum install postgresql15 -y
    ```
 
-4. Get database credentials from Secrets Manager:
+3. Get database credentials from Secrets Manager:
    ```bash
    aws secretsmanager get-secret-value --secret-id <secret-arn> --region <region>
    ```
 
-5. Connect to PostgreSQL:
+4. Connect to PostgreSQL:
    ```bash
    psql -h <database-endpoint> -U postgres -d postgres
    ```
 
-### Option 2: From EC2 Instance in VPC
+### Option 2: Using AWS Systems Manager Session Manager
 
-Deploy an EC2 instance in the same VPC and connect directly to the database.
+1. Deploy an EC2 instance with Systems Manager permissions
+2. Connect via Session Manager for secure access without SSH keys
+3. Follow the same steps as Option 1 for database connection
 
-### Option 3: Using AWS Systems Manager Session Manager
+### Option 3: From Application Services
 
-Enable Session Manager for secure access without SSH keys.
+Deploy your applications (ECS, Lambda, etc.) within the same VPC to access the database directly.
 
 ## Stack Outputs
 
@@ -262,8 +260,6 @@ After deployment, the stack provides these outputs:
 - **DatabasePort**: Database port (5432)
 - **DatabaseSecretArn**: ARN of the secret containing credentials
 - **VpcId**: VPC ID where resources are deployed
-- **BastionHostId**: Bastion host instance ID
-- **BastionHostPublicIp**: Bastion host public IP
 
 ## Production Considerations
 

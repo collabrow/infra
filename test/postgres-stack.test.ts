@@ -39,11 +39,6 @@ test('PostgreSQL Stack creates Aurora cluster', () => {
   template.hasResourceProperties('AWS::SecretsManager::Secret', {
     Description: 'PostgreSQL database credentials',
   });
-
-  // Test that bastion host is created
-  template.hasResourceProperties('AWS::EC2::Instance', {
-    InstanceType: 't3.nano',
-  });
 });
 
 test('PostgreSQL Stack has correct outputs', () => {
@@ -59,8 +54,6 @@ test('PostgreSQL Stack has correct outputs', () => {
   template.hasOutput('DatabasePort', {});
   template.hasOutput('DatabaseSecretArn', {});
   template.hasOutput('VpcId', {});
-  template.hasOutput('BastionHostId', {});
-  template.hasOutput('BastionHostPublicIp', {});
   template.hasOutput('Environment', {});
 });
 

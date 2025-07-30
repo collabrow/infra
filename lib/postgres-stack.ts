@@ -125,35 +125,18 @@ export class PostgresStack extends cdk.Stack {
       ] : [],
     });
 
-    // Create bastion host for database access (optional)
-    const bastionSecurityGroup = new ec2.SecurityGroup(this, 'BastionSecurityGroup', {
+    // Create VPC endpoints for secure access to AWS services without internet gateway
+    new ec2.InterfaceVpcEndpoint(this, 'SecretsManagerEndpoint', {
       vpc,
-      description: 'Security group for bastion host',
-      allowAllOutbound: true,
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
     });
 
-    // Allow SSH access to bastion host
-    bastionSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(22),
-      'Allow SSH access from anywhere'
-    );
-
-    const bastionHost = new ec2.BastionHostLinux(this, 'BastionHost', {
+    new ec2.InterfaceVpcEndpoint(this, 'RdsEndpoint', {
       vpc,
-      securityGroup: bastionSecurityGroup,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.NANO),
-      subnetSelection: {
-        subnetType: ec2.SubnetType.PUBLIC,
-      },
+      service: ec2.InterfaceVpcEndpointAwsService.RDS,
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
     });
-
-    // Allow bastion host to connect to database
-    dbSecurityGroup.addIngressRule(
-      bastionSecurityGroup,
-      ec2.Port.tcp(5432),
-      'Allow PostgreSQL access from bastion host'
-    );
 
     // Outputs
     new cdk.CfnOutput(this, 'DatabaseEndpoint', {
@@ -179,16 +162,6 @@ export class PostgresStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'VpcId', {
       value: vpc.vpcId,
       description: `VPC ID where PostgreSQL is deployed for ${props.environment}`,
-    });
-
-    new cdk.CfnOutput(this, 'BastionHostId', {
-      value: bastionHost.instanceId,
-      description: 'Bastion host instance ID for database access',
-    });
-
-    new cdk.CfnOutput(this, 'BastionHostPublicIp', {
-      value: bastionHost.instancePublicIp,
-      description: 'Bastion host public IP address',
     });
 
     new cdk.CfnOutput(this, 'Environment', {
